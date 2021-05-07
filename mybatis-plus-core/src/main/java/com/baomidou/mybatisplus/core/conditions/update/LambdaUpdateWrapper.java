@@ -19,7 +19,7 @@ import com.baomidou.mybatisplus.core.conditions.AbstractLambdaWrapper;
 import com.baomidou.mybatisplus.core.conditions.SharedString;
 import com.baomidou.mybatisplus.core.conditions.segments.MergeSegments;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
-import com.baomidou.mybatisplus.core.toolkit.StringPool;
+import com.baomidou.mybatisplus.core.toolkit.Constants;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 
@@ -61,7 +61,7 @@ public class LambdaUpdateWrapper<T> extends AbstractLambdaWrapper<T, LambdaUpdat
     }
 
     LambdaUpdateWrapper(T entity, Class<T> entityClass, List<String> sqlSet, AtomicInteger paramNameSeq,
-                        Map<String, Object> paramNameValuePairs, MergeSegments mergeSegments,
+                        Map<String, Object> paramNameValuePairs, MergeSegments mergeSegments, SharedString paramAlias,
                         SharedString lastSql, SharedString sqlComment, SharedString sqlFirst) {
         super.setEntity(entity);
         super.setEntityClass(entityClass);
@@ -69,17 +69,18 @@ public class LambdaUpdateWrapper<T> extends AbstractLambdaWrapper<T, LambdaUpdat
         this.paramNameSeq = paramNameSeq;
         this.paramNameValuePairs = paramNameValuePairs;
         this.expression = mergeSegments;
+        this.paramAlias = paramAlias;
         this.lastSql = lastSql;
         this.sqlComment = sqlComment;
         this.sqlFirst = sqlFirst;
     }
 
     @Override
-    public LambdaUpdateWrapper<T> set(boolean condition, SFunction<T, ?> column, Object val) {
-        if (condition) {
-            sqlSet.add(String.format("%s=%s", columnToString(column), formatSql("{0}", val)));
-        }
-        return typedThis;
+    public LambdaUpdateWrapper<T> set(boolean condition, SFunction<T, ?> column, Object val, String mapping) {
+        return maybeDo(condition, () -> {
+            String sql = formatParam(mapping, val);
+            sqlSet.add(columnToString(column) + Constants.EQUALS + sql);
+        });
     }
 
     @Override
@@ -95,13 +96,13 @@ public class LambdaUpdateWrapper<T> extends AbstractLambdaWrapper<T, LambdaUpdat
         if (CollectionUtils.isEmpty(sqlSet)) {
             return null;
         }
-        return String.join(StringPool.COMMA, sqlSet);
+        return String.join(Constants.COMMA, sqlSet);
     }
 
     @Override
     protected LambdaUpdateWrapper<T> instance() {
         return new LambdaUpdateWrapper<>(getEntity(), getEntityClass(), null, paramNameSeq, paramNameValuePairs,
-            new MergeSegments(), SharedString.emptyString(), SharedString.emptyString(), SharedString.emptyString());
+            new MergeSegments(), paramAlias, SharedString.emptyString(), SharedString.emptyString(), SharedString.emptyString());
     }
 
     @Override

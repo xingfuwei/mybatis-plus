@@ -16,7 +16,6 @@
 package com.baomidou.mybatisplus.core.override;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.core.metadata.PageList;
 import com.baomidou.mybatisplus.core.toolkit.Assert;
 import org.apache.ibatis.binding.BindingException;
 import org.apache.ibatis.binding.MapperMethod;
@@ -120,13 +119,7 @@ public class MybatisMapperMethod {
         Assert.notNull(result, "can't found IPage for args!");
         Object param = method.convertArgsToSqlCommandParam(args);
         List<E> list = sqlSession.selectList(command.getName(), param);
-        if (list instanceof PageList) {
-            PageList<E> pageList = (PageList<E>) list;
-            result.setRecords(pageList.getRecords());
-            result.setTotal(pageList.getTotal());
-        } else {
-            result.setRecords(list);
-        }
+        result.setRecords(list);
         return result;
     }
 

@@ -60,6 +60,10 @@ public class TableFieldInfo implements Constants {
      */
     private final String el;
     /**
+     * jdbcType, typeHandler等部分
+     */
+    private final String mapping;
+    /**
      * 属性类型
      */
     private final Class<?> propertyType;
@@ -180,7 +184,7 @@ public class TableFieldInfo implements Constants {
         String el = this.property;
         if (JdbcType.UNDEFINED != jdbcType) {
             this.jdbcType = jdbcType;
-            el += (COMMA + "jdbcType=" + jdbcType.name());
+            el += (COMMA + SqlScriptUtils.mappingJdbcType(jdbcType));
         }
         if (UnknownTypeHandler.class != typeHandler) {
             this.typeHandler = (Class<? extends TypeHandler<?>>) typeHandler;
@@ -200,12 +204,14 @@ public class TableFieldInfo implements Constants {
                 }
                 el += (COMMA + "javaType=" + javaType);
             }
-            el += (COMMA + "typeHandler=" + typeHandler.getName());
+            el += (COMMA + SqlScriptUtils.mappingTypeHandler(this.typeHandler));
         }
         if (StringUtils.isNotBlank(numericScale)) {
-            el += (COMMA + "numericScale=" + numericScale);
+            el += (COMMA + SqlScriptUtils.mappingNumericScale(Integer.valueOf(numericScale)));
         }
         this.el = el;
+        int index = el.indexOf(COMMA);
+        this.mapping = index > 0 ? el.substring(++index) : null;
         this.initLogicDelete(dbConfig, field, existTableLogic);
 
         String column = tableField.value();
@@ -271,6 +277,7 @@ public class TableFieldInfo implements Constants {
         this.isPrimitive = this.propertyType.isPrimitive();
         this.isCharSequence = StringUtils.isCharSequence(this.propertyType);
         this.el = this.property;
+        this.mapping = null;
         this.insertStrategy = dbConfig.getInsertStrategy();
         this.updateStrategy = dbConfig.getUpdateStrategy();
         this.whereStrategy = dbConfig.getSelectStrategy();

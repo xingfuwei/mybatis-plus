@@ -16,12 +16,8 @@
 package com.baomidou.mybatisplus.core.conditions.interfaces;
 
 import java.io.Serializable;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Optional;
 import java.util.function.Consumer;
-
-import static java.util.stream.Collectors.toList;
 
 /**
  * 查询条件封装
@@ -77,6 +73,7 @@ public interface Func<Children, R> extends Serializable {
      * 字段 IN (value.get(0), value.get(1), ...)
      * <p>例: in("id", Arrays.asList(1, 2, 3, 4, 5))</p>
      *
+     * <li> 注意！集合为空若存在逻辑错误，请在 condition 条件中判断 </li>
      * <li> 如果集合为 empty 则不会进行 sql 拼接 </li>
      *
      * @param condition 执行条件
@@ -97,6 +94,7 @@ public interface Func<Children, R> extends Serializable {
      * 字段 IN (v0, v1, ...)
      * <p>例: in("id", 1, 2, 3, 4, 5)</p>
      *
+     * <li> 注意！数组为空若存在逻辑错误，请在 condition 条件中判断 </li>
      * <li> 如果动态数组为 empty 则不会进行 sql 拼接 </li>
      *
      * @param condition 执行条件
@@ -104,10 +102,7 @@ public interface Func<Children, R> extends Serializable {
      * @param values    数据数组
      * @return children
      */
-    default Children in(boolean condition, R column, Object... values) {
-        return in(condition, column, Arrays.stream(Optional.ofNullable(values).orElseGet(() -> new Object[]{}))
-            .collect(toList()));
-    }
+    Children in(boolean condition, R column, Object... values);
 
     /**
      * ignore
@@ -143,10 +138,7 @@ public interface Func<Children, R> extends Serializable {
      * @param values    数据数组
      * @return children
      */
-    default Children notIn(boolean condition, R column, Object... values) {
-        return notIn(condition, column, Arrays.stream(Optional.ofNullable(values).orElseGet(() -> new Object[]{}))
-            .collect(toList()));
-    }
+    Children notIn(boolean condition, R column, Object... values);
 
     /**
      * ignore
