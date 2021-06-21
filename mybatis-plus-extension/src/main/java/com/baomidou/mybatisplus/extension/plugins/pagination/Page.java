@@ -17,7 +17,6 @@ package com.baomidou.mybatisplus.extension.plugins.pagination;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
-import lombok.Getter;
 import lombok.Setter;
 
 import java.util.ArrayList;
@@ -58,7 +57,6 @@ public class Page<T> implements IPage<T> {
     /**
      * 排序字段信息
      */
-    @Getter
     @Setter
     protected List<OrderItem> orders = new ArrayList<>();
 
@@ -69,17 +67,15 @@ public class Page<T> implements IPage<T> {
     /**
      * 是否进行 count 查询
      */
-    protected boolean isSearchCount = true;
+    protected boolean searchCount = true;
     /**
      * countId
      */
-    @Getter
     @Setter
     protected String countId;
     /**
      * countId
      */
-    @Getter
     @Setter
     protected Long maxLimit;
 
@@ -100,17 +96,17 @@ public class Page<T> implements IPage<T> {
         this(current, size, total, true);
     }
 
-    public Page(long current, long size, boolean isSearchCount) {
-        this(current, size, 0, isSearchCount);
+    public Page(long current, long size, boolean searchCount) {
+        this(current, size, 0, searchCount);
     }
 
-    public Page(long current, long size, long total, boolean isSearchCount) {
+    public Page(long current, long size, long total, boolean searchCount) {
         if (current > 1) {
             this.current = current;
         }
         this.size = size;
         this.total = total;
-        this.isSearchCount = isSearchCount;
+        this.searchCount = searchCount;
     }
 
     /**
@@ -177,12 +173,12 @@ public class Page<T> implements IPage<T> {
 
     @Override
     public String countId() {
-        return getCountId();
+        return this.countId;
     }
 
     @Override
     public Long maxLimit() {
-        return getMaxLimit();
+        return this.maxLimit;
     }
 
     /**
@@ -238,7 +234,7 @@ public class Page<T> implements IPage<T> {
 
     @Override
     public List<OrderItem> orders() {
-        return getOrders();
+        return this.orders;
     }
 
     @Override
@@ -246,20 +242,16 @@ public class Page<T> implements IPage<T> {
         return optimizeCountSql;
     }
 
-    public boolean isOptimizeCountSql() {
-        return optimizeCountSql();
-    }
-
     @Override
-    public boolean isSearchCount() {
+    public boolean searchCount() {
         if (total < 0) {
             return false;
         }
-        return isSearchCount;
+        return searchCount;
     }
 
-    public Page<T> setSearchCount(boolean isSearchCount) {
-        this.isSearchCount = isSearchCount;
+    public Page<T> setSearchCount(boolean searchCount) {
+        this.searchCount = searchCount;
         return this;
     }
 
@@ -267,4 +259,58 @@ public class Page<T> implements IPage<T> {
         this.optimizeCountSql = optimizeCountSql;
         return this;
     }
+
+    @Override
+    public long getPages() {
+        // 解决 github issues/3208
+        return IPage.super.getPages();
+    }
+
+    /* --------------- 以下为静态构造方式 --------------- */
+    public static <T> Page<T> of(long current, long size) {
+        return of(current, size, 0);
+    }
+
+    public static <T> Page<T> of(long current, long size, long total) {
+        return of(current, size, total, true);
+    }
+
+    public static <T> Page<T> of(long current, long size, boolean searchCount) {
+        return of(current, size, 0, searchCount);
+    }
+
+    public static <T> Page<T> of(long current, long size, long total, boolean searchCount) {
+        return new Page(current, size, total, searchCount);
+    }
+
+    /**
+     * --begin------------- 未来抛弃移除的方法 -------------begin--
+     * 该部分属性转移至 {@link PageDTO}
+     */
+    @Deprecated
+    public String getCountId() {
+        return this.countId;
+    }
+
+    @Deprecated
+    public Long getMaxLimit() {
+        return this.maxLimit;
+    }
+
+    @Deprecated
+    public List<OrderItem> getOrders() {
+        return this.orders;
+    }
+
+    @Deprecated
+    public boolean isOptimizeCountSql() {
+        return this.optimizeCountSql;
+    }
+
+    @Deprecated
+    public boolean isSearchCount() {
+        return this.searchCount;
+    }
+    /** --end------------- 未来抛弃移除的方法 -------------end-- */
+
 }

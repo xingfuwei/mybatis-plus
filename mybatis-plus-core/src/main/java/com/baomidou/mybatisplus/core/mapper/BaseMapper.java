@@ -17,7 +17,9 @@ package com.baomidou.mybatisplus.core.mapper;
 
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.Constants;
+import com.baomidou.mybatisplus.core.toolkit.ExceptionUtils;
 import org.apache.ibatis.annotations.Param;
 
 import java.io.Serializable;
@@ -155,10 +157,20 @@ public interface BaseMapper<T> extends Mapper<T> {
 
     /**
      * 根据 entity 条件，查询一条记录
+     * <p>请自行保存只能查询一条记录，例如 qw.last("limit 1") 限制取一条记录</p>
      *
      * @param queryWrapper 实体对象封装操作类（可以为 null）
      */
-    T selectOne(@Param(Constants.WRAPPER) Wrapper<T> queryWrapper);
+    default T selectOne(@Param(Constants.WRAPPER) Wrapper<T> queryWrapper) {
+        List<T> ts = this.selectList(queryWrapper);
+        if (CollectionUtils.isNotEmpty(ts)) {
+            if (ts.size() > 1) {
+                throw ExceptionUtils.mpe("One record is expected, but the query result is multiple records");
+            }
+            return ts.get(0);
+        }
+        return null;
+    }
 
     /**
      * 根据 Wrapper 条件，查询总记录数
@@ -195,7 +207,7 @@ public interface BaseMapper<T> extends Mapper<T> {
      * @param page         分页查询条件（可以为 RowBounds.DEFAULT）
      * @param queryWrapper 实体对象封装操作类（可以为 null）
      */
-    <E extends IPage<T>> E selectPage(E page, @Param(Constants.WRAPPER) Wrapper<T> queryWrapper);
+    <P extends IPage<T>> P selectPage(P page, @Param(Constants.WRAPPER) Wrapper<T> queryWrapper);
 
     /**
      * 根据 Wrapper 条件，查询全部记录（并翻页）
@@ -203,5 +215,5 @@ public interface BaseMapper<T> extends Mapper<T> {
      * @param page         分页查询条件
      * @param queryWrapper 实体对象封装操作类
      */
-    <E extends IPage<Map<String, Object>>> E selectMapsPage(E page, @Param(Constants.WRAPPER) Wrapper<T> queryWrapper);
+    <P extends IPage<Map<String, Object>>> P selectMapsPage(P page, @Param(Constants.WRAPPER) Wrapper<T> queryWrapper);
 }

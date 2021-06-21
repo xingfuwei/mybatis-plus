@@ -232,7 +232,7 @@ public class TableInfoHelper {
         tableInfo.setTableName(targetTableName);
 
         /* 开启了自定义 KEY 生成器 */
-        if (null != dbConfig.getKeyGenerator()) {
+        if (CollectionUtils.isNotEmpty(dbConfig.getKeyGenerators())) {
             tableInfo.setKeySequence(clazz.getAnnotation(KeySequence.class));
         }
         return excludeProperty;
@@ -289,34 +289,42 @@ public class TableInfoHelper {
                 continue;
             }
 
+            boolean isPK = false;
+            boolean isOrderBy = field.getAnnotation(OrderBy.class) != null;
+
             /* 主键ID 初始化 */
             if (existTableId) {
                 TableId tableId = field.getAnnotation(TableId.class);
                 if (tableId != null) {
                     if (isReadPK) {
                         throw ExceptionUtils.mpe("@TableId can't more than one in Class: \"%s\".", clazz.getName());
-                    } else {
-                        initTableIdWithAnnotation(dbConfig, tableInfo, field, tableId, reflector);
-                        isReadPK = true;
-                        continue;
                     }
+
+                    initTableIdWithAnnotation(dbConfig, tableInfo, field, tableId, reflector);
+                    isPK = isReadPK = true;
                 }
             } else if (!isReadPK) {
-                isReadPK = initTableIdWithoutAnnotation(dbConfig, tableInfo, field, reflector);
-                if (isReadPK) {
-                    continue;
-                }
+                isPK = isReadPK = initTableIdWithoutAnnotation(dbConfig, tableInfo, field, reflector);
+
             }
+
+            if (isPK) {
+                if (isOrderBy) {
+                    tableInfo.getOrderByFields().add(new TableFieldInfo(dbConfig, tableInfo, field, reflector, existTableLogic, true));
+                }
+                continue;
+            }
+
             final TableField tableField = field.getAnnotation(TableField.class);
 
             /* 有 @TableField 注解的字段初始化 */
             if (tableField != null) {
-                fieldList.add(new TableFieldInfo(dbConfig, tableInfo, field, tableField, reflector, existTableLogic));
+                fieldList.add(new TableFieldInfo(dbConfig, tableInfo, field, tableField, reflector, existTableLogic, isOrderBy));
                 continue;
             }
 
-            /* 无 @TableField 注解的字段初始化 */
-            fieldList.add(new TableFieldInfo(dbConfig, tableInfo, field, reflector, existTableLogic));
+            /* 无 @TableField  注解的字段初始化 */
+            fieldList.add(new TableFieldInfo(dbConfig, tableInfo, field, reflector, existTableLogic, isOrderBy));
         }
 
         /* 字段列表 */
@@ -334,7 +342,7 @@ public class TableInfoHelper {
      * </p>
      *
      * @param list 字段列表
-     * @return true 为存在 @TableId 注解;
+     * @return true 为存在 {@link TableId} 注解;
      */
     public static boolean isExistTableId(List<Field> list) {
         return list.stream().anyMatch(field -> field.isAnnotationPresent(TableId.class));
@@ -346,10 +354,22 @@ public class TableInfoHelper {
      * </p>
      *
      * @param list 字段列表
-     * @return true 为存在 @TableId 注解;
+     * @return true 为存在 {@link TableLogic} 注解;
      */
     public static boolean isExistTableLogic(List<Field> list) {
         return list.stream().anyMatch(field -> field.isAnnotationPresent(TableLogic.class));
+    }
+
+    /**
+     * <p>
+     * 判断排序注解是否存在
+     * </p>
+     *
+     * @param list 字段列表
+     * @return true 为存在 {@link OrderBy} 注解;
+     */
+    public static boolean isExistOrderBy(List<Field> list) {
+        return list.stream().anyMatch(field -> field.isAnnotationPresent(OrderBy.class));
     }
 
     /**
@@ -484,9 +504,21 @@ public class TableInfoHelper {
     }
 
     public static KeyGenerator genKeyGenerator(String baseStatementId, TableInfo tableInfo, MapperBuilderAssistant builderAssistant) {
-        IKeyGenerator keyGenerator = GlobalConfigUtils.getKeyGenerator(builderAssistant.getConfiguration());
-        if (null == keyGenerator) {
+        List<IKeyGenerator> keyGenerators = GlobalConfigUtils.getKeyGenerators(builderAssistant.getConfiguration());
+        if (CollectionUtils.isEmpty(keyGenerators)) {
             throw new IllegalArgumentException("not configure IKeyGenerator implementation class.");
+        }
+        IKeyGenerator keyGenerator = null;
+        if (keyGenerators.size() > 1) {
+            // 多个主键生成器
+            KeySequence keySequence = tableInfo.getKeySequence();
+            if (null != keySequence && DbType.OTHER != keySequence.dbType()) {
+                keyGenerator = keyGenerators.stream().filter(k -> k.dbType() == keySequence.dbType()).findFirst().get();
+            }
+        }
+        // 无法找到注解指定生成器，默认使用第一个生成器
+        if (null == keyGenerator) {
+            keyGenerator = keyGenerators.get(0);
         }
         Configuration configuration = builderAssistant.getConfiguration();
         String id = builderAssistant.getCurrentNamespace() + StringPool.DOT + baseStatementId + SelectKeyGenerator.SELECT_KEY_SUFFIX;

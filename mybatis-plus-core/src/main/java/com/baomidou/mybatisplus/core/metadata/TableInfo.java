@@ -32,10 +32,7 @@ import org.apache.ibatis.mapping.ResultMap;
 import org.apache.ibatis.mapping.ResultMapping;
 import org.apache.ibatis.session.Configuration;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
@@ -174,6 +171,13 @@ public class TableInfo implements Constants {
     @Setter(AccessLevel.NONE)
     private TableFieldInfo versionFieldInfo;
 
+    /**
+     * 排序列表
+     */
+    @Getter
+    @Setter
+    private List<TableFieldInfo> orderByFields = new LinkedList<>();
+
     public TableInfo(Class<?> entityType) {
         this.entityType = entityType;
     }
@@ -269,10 +273,11 @@ public class TableInfo implements Constants {
     public String getKeyInsertSqlProperty(final String prefix, final boolean newLine) {
         final String newPrefix = prefix == null ? EMPTY : prefix;
         if (havePK()) {
+            String keyColumn = SqlScriptUtils.safeParam(newPrefix + keyProperty) + COMMA;
             if (idType == IdType.AUTO) {
-                return EMPTY;
+                return SqlScriptUtils.convertIf(keyColumn, String.format("%s != null", keyProperty), newLine);
             }
-            return SqlScriptUtils.safeParam(newPrefix + keyProperty) + COMMA + (newLine ? NEWLINE : EMPTY);
+            return keyColumn + (newLine ? NEWLINE : EMPTY);
         }
         return EMPTY;
     }
@@ -287,7 +292,7 @@ public class TableInfo implements Constants {
     public String getKeyInsertSqlColumn(final boolean newLine) {
         if (havePK()) {
             if (idType == IdType.AUTO) {
-                return EMPTY;
+                return SqlScriptUtils.convertIf(keyColumn + COMMA, String.format("%s != null", keyProperty), newLine);
             }
             return keyColumn + COMMA + (newLine ? NEWLINE : EMPTY);
         }
@@ -447,6 +452,9 @@ public class TableInfo implements Constants {
             }
             if (i.isWithUpdateFill()) {
                 this.withUpdateFill = true;
+            }
+            if (i.isOrderBy()) {
+                this.orderByFields.add(i);
             }
             if (i.isVersion()) {
                 this.withVersion = true;
